@@ -1339,6 +1339,9 @@ CGSize NISizeOfAttributedStringConstrainedToSize(NSAttributedString *attributedS
     if (0 == self.images.count) {
         return nil;
     }
+    if (nil == self.textFrame) {
+        return nil;
+    }
     
     NSMutableArray* imageRects = NSMutableArray.new; // will store CGRects instead of drawing in them
     
