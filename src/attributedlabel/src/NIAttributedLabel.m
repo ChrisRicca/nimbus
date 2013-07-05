@@ -1333,6 +1333,82 @@ CGSize NISizeOfAttributedStringConstrainedToSize(NSAttributedString *attributedS
   }
 }
 
+- (NSArray*)insertedImageRects
+{
+    // Mostly just copied over this from drawImages...
+    if (0 == self.images.count) {
+        return nil;
+    }
+    
+    NSMutableArray* imageRects = NSMutableArray.new; // will store CGRects instead of drawing in them
+    
+    CFArrayRef lines = CTFrameGetLines(self.textFrame);
+    CFIndex lineCount = CFArrayGetCount(lines);
+    CGPoint lineOrigins[lineCount];
+    CTFrameGetLineOrigins(self.textFrame, CFRangeMake(0, 0), lineOrigins);
+    NSInteger numberOfLines = [self numberOfDisplayedLines];
+    
+    for (CFIndex i = 0; i < numberOfLines; i++) {
+        CTLineRef line = CFArrayGetValueAtIndex(lines, i);
+        CFArrayRef runs = CTLineGetGlyphRuns(line);
+        CFIndex runCount = CFArrayGetCount(runs);
+        CGPoint lineOrigin = lineOrigins[i];
+        CGFloat lineAscent;
+        CGFloat lineDescent;
+        CTLineGetTypographicBounds(line, &lineAscent, &lineDescent, NULL);
+        CGFloat lineHeight = lineAscent + lineDescent;
+        CGFloat lineBottomY = lineOrigin.y - lineDescent;
+        
+        // Iterate through each of the "runs" (i.e. a chunk of text) and find the runs that
+        // intersect with the range.
+        for (CFIndex k = 0; k < runCount; k++) {
+            CTRunRef run = CFArrayGetValueAtIndex(runs, k);
+            NSDictionary *runAttributes = (__bridge NSDictionary *)CTRunGetAttributes(run);
+            CTRunDelegateRef delegate = (__bridge CTRunDelegateRef)[runAttributes valueForKey:(__bridge id)kCTRunDelegateAttributeName];
+            if (nil == delegate) {
+                continue;
+            }
+            NIAttributedLabelImage* labelImage = (__bridge NIAttributedLabelImage *)CTRunDelegateGetRefCon(delegate);
+            
+            CGFloat ascent = 0.0f;
+            CGFloat descent = 0.0f;
+            CGFloat width = (CGFloat)CTRunGetTypographicBounds(run,
+                                                               CFRangeMake(0, 0),
+                                                               &ascent,
+                                                               &descent,
+                                                               NULL);
+            
+            CGFloat imageBoxHeight = labelImage.boxSize.height;
+            
+            CGFloat xOffset = CTLineGetOffsetForStringIndex(line, CTRunGetStringRange(run).location, nil);
+            
+            CGFloat imageBoxOriginY = 0.0f;
+            switch (labelImage.verticalTextAlignment) {
+                case NIVerticalTextAlignmentTop:
+                    imageBoxOriginY = lineBottomY + (lineHeight - imageBoxHeight);
+                    break;
+                case NIVerticalTextAlignmentMiddle:
+                    imageBoxOriginY = lineBottomY + (lineHeight - imageBoxHeight) / 2.f;
+                    break;
+                case NIVerticalTextAlignmentBottom:
+                    imageBoxOriginY = lineBottomY;
+                    break;
+            }
+            
+            CGRect rect = CGRectMake(lineOrigin.x + xOffset, imageBoxOriginY, width, imageBoxHeight);
+            UIEdgeInsets flippedMargins = labelImage.margins;
+            CGFloat top = flippedMargins.top;
+            flippedMargins.top = flippedMargins.bottom;
+            flippedMargins.bottom = top;
+            
+            CGRect imageRect = UIEdgeInsetsInsetRect(rect, flippedMargins);
+            [imageRects addObject:[NSValue valueWithCGRect:imageRect]]; // storing CGRects instead of drawing in them
+        }
+    }
+    
+    return [imageRects copy];
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 - (void)drawHighlightWithRect:(CGRect)rect {
@@ -1698,7 +1774,6 @@ CGFloat ImageDelegateGetWidthCallback(void* refCon) {
   }
   [self.images addObject:labelImage];
 }
-
 @end
 
 
