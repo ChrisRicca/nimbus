@@ -1361,6 +1361,7 @@ CGSize NISizeOfAttributedStringConstrainedToSize(NSAttributedString *attributedS
         CTLineGetTypographicBounds(line, &lineAscent, &lineDescent, NULL);
         CGFloat lineHeight = lineAscent + lineDescent;
         CGFloat lineBottomY = lineOrigin.y - lineDescent;
+        CGFloat lineTopUIViewY = self.bounds.size.height - lineOrigin.y - lineHeight;
         
         // Iterate through each of the "runs" (i.e. a chunk of text) and find the runs that
         // intersect with the range.
@@ -1386,15 +1387,17 @@ CGSize NISizeOfAttributedStringConstrainedToSize(NSAttributedString *attributedS
             CGFloat xOffset = CTLineGetOffsetForStringIndex(line, CTRunGetStringRange(run).location, nil);
             
             CGFloat imageBoxOriginY = 0.0f;
+            CGFloat fudgeFactor = 10.0;
+            
             switch (labelImage.verticalTextAlignment) {
                 case NIVerticalTextAlignmentTop:
-                    imageBoxOriginY = lineBottomY + (lineHeight - imageBoxHeight);
+                    imageBoxOriginY = lineTopUIViewY + fudgeFactor;
                     break;
                 case NIVerticalTextAlignmentMiddle:
-                    imageBoxOriginY = lineBottomY + (lineHeight - imageBoxHeight) / 2.f;
+                    imageBoxOriginY = lineTopUIViewY + ((lineHeight - imageBoxHeight) / 2.f) + fudgeFactor;
                     break;
                 case NIVerticalTextAlignmentBottom:
-                    imageBoxOriginY = lineBottomY;
+                    imageBoxOriginY = lineTopUIViewY + lineHeight - imageBoxHeight + fudgeFactor;
                     break;
             }
             
