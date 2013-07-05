@@ -1339,8 +1339,9 @@ CGSize NISizeOfAttributedStringConstrainedToSize(NSAttributedString *attributedS
     if (0 == self.images.count) {
         return nil;
     }
-    if (nil == self.textFrame) {
-        return nil;
+    if (self.textFrame == nil) {
+        [self drawTextInRect:self.bounds];
+        // bit of a gross hack to make sure we can calculate where the images are going to go. Works, though! ;)
     }
     
     NSMutableArray* imageRects = NSMutableArray.new; // will store CGRects instead of drawing in them
@@ -1360,7 +1361,7 @@ CGSize NISizeOfAttributedStringConstrainedToSize(NSAttributedString *attributedS
         CGFloat lineDescent;
         CTLineGetTypographicBounds(line, &lineAscent, &lineDescent, NULL);
         CGFloat lineHeight = lineAscent + lineDescent;
-        CGFloat lineBottomY = lineOrigin.y - lineDescent;
+//        CGFloat lineBottomY = lineOrigin.y - lineDescent;
         CGFloat lineTopUIViewY = self.bounds.size.height - lineOrigin.y - lineHeight;
         
         // Iterate through each of the "runs" (i.e. a chunk of text) and find the runs that
@@ -1387,7 +1388,7 @@ CGSize NISizeOfAttributedStringConstrainedToSize(NSAttributedString *attributedS
             CGFloat xOffset = CTLineGetOffsetForStringIndex(line, CTRunGetStringRange(run).location, nil);
             
             CGFloat imageBoxOriginY = 0.0f;
-            CGFloat fudgeFactor = 10.0;
+            CGFloat fudgeFactor = 12.0;
             
             switch (labelImage.verticalTextAlignment) {
                 case NIVerticalTextAlignmentTop:
