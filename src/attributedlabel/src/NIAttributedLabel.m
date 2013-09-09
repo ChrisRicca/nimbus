@@ -1340,8 +1340,8 @@ CGSize NISizeOfAttributedStringConstrainedToSize(NSAttributedString *attributedS
         return nil;
     }
     if (self.textFrame == nil) {
-        [self drawTextInRect:self.bounds];
-        // bit of a gross hack to make sure we can calculate where the images are going to go. Works, though! ;)
+        // if the label hasn't been drawn on the screen yet, return empty array
+        return @[];
     }
     
     NSMutableArray* imageRects = NSMutableArray.new; // will store CGRects instead of drawing in them
