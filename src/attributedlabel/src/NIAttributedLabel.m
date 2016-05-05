@@ -1317,6 +1317,91 @@ _NI_UIACTIONSHEET_DEPRECATION_SUPPRESSION_POP()
   }
 }
 
+- (NSArray*)insertedImageRects
+{
+    // Mostly just copied over this from drawImages...
+    if (0 == self.images.count) {
+        return nil;
+    }
+    if (self.textFrame == nil) {
+        // if the label hasn't been drawn on the screen yet, return empty array
+        return @[];
+    }
+
+    NSMutableArray* imageRects = NSMutableArray.new; // will store CGRects instead of drawing in them
+
+    CFArrayRef lines = CTFrameGetLines(self.textFrame);
+    CFIndex lineCount = CFArrayGetCount(lines);
+    CGPoint lineOrigins[lineCount];
+    CTFrameGetLineOrigins(self.textFrame, CFRangeMake(0, 0), lineOrigins);
+    NSInteger numberOfLines = [self numberOfDisplayedLines];
+
+    for (CFIndex i = 0; i < numberOfLines; i++) {
+        CTLineRef line = CFArrayGetValueAtIndex(lines, i);
+        CFArrayRef runs = CTLineGetGlyphRuns(line);
+        CFIndex runCount = CFArrayGetCount(runs);
+        CGPoint lineOrigin = lineOrigins[i];
+        CGFloat lineAscent;
+        CGFloat lineDescent;
+        CTLineGetTypographicBounds(line, &lineAscent, &lineDescent, NULL);
+        CGFloat lineHeight = lineAscent + lineDescent;
+//        CGFloat lineBottomY = lineOrigin.y - lineDescent;
+        CGFloat lineTopUIViewY = self.bounds.size.height - lineOrigin.y - lineHeight;
+
+        // Iterate through each of the "runs" (i.e. a chunk of text) and find the runs that
+        // intersect with the range.
+        for (CFIndex k = 0; k < runCount; k++) {
+            CTRunRef run = CFArrayGetValueAtIndex(runs, k);
+            NSDictionary *runAttributes = (__bridge NSDictionary *)CTRunGetAttributes(run);
+            CTRunDelegateRef delegate = (__bridge CTRunDelegateRef)[runAttributes valueForKey:(__bridge id)kCTRunDelegateAttributeName];
+            if (nil == delegate) {
+                continue;
+            }
+            NIAttributedLabelImage* labelImage = (__bridge NIAttributedLabelImage *)CTRunDelegateGetRefCon(delegate);
+
+            CGFloat ascent = 0.0f;
+            CGFloat descent = 0.0f;
+            CGFloat width = (CGFloat)CTRunGetTypographicBounds(run,
+                                                               CFRangeMake(0, 0),
+                                                               &ascent,
+                                                               &descent,
+                                                               NULL);
+
+            CGFloat imageBoxHeight = labelImage.boxSize.height;
+
+            CGFloat xOffset = CTLineGetOffsetForStringIndex(line, CTRunGetStringRange(run).location, nil);
+
+            CGFloat imageBoxOriginY = 0.0f;
+            CGFloat fudgeFactor = 12.0;
+
+            switch (labelImage.verticalTextAlignment) {
+                case NIVerticalTextAlignmentTop:
+                    imageBoxOriginY = lineTopUIViewY + fudgeFactor;
+                    break;
+                case NIVerticalTextAlignmentMiddle:
+                    imageBoxOriginY = lineTopUIViewY + ((lineHeight - imageBoxHeight) / 2.f) + fudgeFactor;
+                    break;
+                case NIVerticalTextAlignmentBottom:
+                    imageBoxOriginY = lineTopUIViewY + lineHeight - imageBoxHeight + fudgeFactor;
+                    break;
+            }
+
+            CGRect rect = CGRectMake(lineOrigin.x + xOffset, imageBoxOriginY, width, imageBoxHeight);
+            UIEdgeInsets flippedMargins = labelImage.margins;
+            CGFloat top = flippedMargins.top;
+            flippedMargins.top = flippedMargins.bottom;
+            flippedMargins.bottom = top;
+
+            CGRect imageRect = UIEdgeInsetsInsetRect(rect, flippedMargins);
+            [imageRects addObject:[NSValue valueWithCGRect:imageRect]]; // storing CGRects instead of drawing in them
+        }
+    }
+
+    return [imageRects copy];
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 - (void)drawHighlightWithRect:(CGRect)rect {
   if ((nil == self.touchedLink && nil == self.actionSheetLink) || nil == self.highlightedLinkBackgroundColor) {
     return;
@@ -1505,7 +1590,7 @@ _NI_UIACTIONSHEET_DEPRECATION_SUPPRESSION_POP()
   UIFont *font = CFDictionaryGetValue(attributes, kFontAttributeKey);
   font = font ?: self.font;
   CGFloat strikeHeight = font.xHeight / 2.f + (*firstGlyphPosition).y;
-  
+
   // Adjustment for multiline elements.
   CGPoint pt = CGContextGetTextPosition(ctx);
   strikeHeight += pt.y;
@@ -1754,7 +1839,6 @@ CGFloat NIImageDelegateGetWidthCallback(void* refCon) {
   }
   [self.images addObject:labelImage];
 }
-
 @end
 
 @implementation NIAttributedLabel (ConversionUtilities)

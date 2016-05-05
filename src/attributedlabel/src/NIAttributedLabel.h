@@ -118,6 +118,7 @@ extern NSString* const NIAttributedLabelLinkAttributeName; // Value is an NSText
 - (void)insertImage:(UIImage *)image atIndex:(NSInteger)index margins:(UIEdgeInsets)margins verticalTextAlignment:(NIVerticalTextAlignment)verticalTextAlignment;
 
 - (void)invalidateAccessibleElements;
+- (NSArray*)insertedImageRects;
 
 @property (nonatomic, weak) IBOutlet id<NIAttributedLabelDelegate> delegate;
 @end
@@ -384,7 +385,7 @@ extern NSString* const NIAttributedLabelLinkAttributeName; // Value is an NSText
  * @fn NIAttributedLabel::setTextColor:range:
  */
 
-/** 
+/**
  * Sets the font for text in a given range.
  *
  * @fn NIAttributedLabel::setFont:range:
